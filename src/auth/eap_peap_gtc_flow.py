@@ -230,12 +230,13 @@ class EapPeapGtcFlow(Flow):
         session.auth_user.set_peap_username(account_name)
 
         # 查找用户密码
-        user = Account.get(username=account_name)
-        if not user:
+        account = Account.get(username=account_name)
+        if not account:
             raise AccessReject()
         else:
             # 保存用户密码
-            session.auth_user.set_user_password(user.radius_password)
+            session.auth_user.set_user_password(account.radius_password)
+            session.auth_user.set_user_speed(account.speed)
 
         # 返回数据
         response_data = b'Password'
@@ -262,7 +263,7 @@ class EapPeapGtcFlow(Flow):
         tls_decrypt_data = libhostapd.decrypt(session.tls_connection, peap.tls_data)
         eap_password = EapPacket.parse(packet=tls_decrypt_data)
         auth_password = eap_password.type_data.decode()
-        log.debug(f'PEAP account: {session.auth_user.peap_username}, packet_password: {auth_password}')
+        log.debug(f'PEAP user: {session.auth_user.peap_username}, packet_password: {auth_password}')
 
         def is_correct_password() -> bool:
             return session.auth_user.user_password == auth_password
@@ -309,8 +310,8 @@ class EapPeapGtcFlow(Flow):
             request.ap_mac,
         ]
         log.info(f'OUT: accept|{"|".join(data)}|')
-        reply = AuthResponse.create_access_accept(request=request)
-        reply['State'] = session.session_id.encode()    # octets 传入 bytes
+        reply = AuthResponse.create_access_accept(request=request, session=session)
+        reply['State'] = session.session_id.encode()    # octets
         log.debug(f'msk: {session.msk}, secret: {reply.secret}, authenticator: {request.authenticator}')
         reply['MS-MPPE-Recv-Key'], reply['MS-MPPE-Send-Key'] = create_mppe_recv_key_send_key(session.msk, reply.secret, request.authenticator)
         reply['EAP-Message'] = struct.pack('!B B H', EapPacket.CODE_EAP_SUCCESS, session.current_eap_id-1, 4)  # eap_id抓包是这样, 不要惊讶!

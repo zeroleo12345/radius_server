@@ -239,12 +239,13 @@ class EapPeapMschapv2Flow(Flow):
         # 保存用户名
         session.auth_user.set_peap_username(account_name)
         # 查找用户密码
-        user = Account.get(username=account_name)
-        if not user:
+        account = Account.get(username=account_name)
+        if not account:
             raise AccessReject()
         else:
             # 保存用户密码
-            session.auth_user.set_user_password(user.radius_password)
+            session.auth_user.set_user_password(account.radius_password)
+            session.auth_user.set_user_speed(account.speed)
 
         # 返回数据
         # MSCHAPV2_OP_CHALLENGE(01) + 与EAP_id相同(07) + MSCHAPV2_OP 到结束的长度(00 1c) +
@@ -436,7 +437,7 @@ class EapPeapMschapv2Flow(Flow):
             request.ap_mac,
         ]
         log.info(f'OUT: accept|{"|".join(data)}|')
-        reply = AuthResponse.create_access_accept(request=request)
+        reply = AuthResponse.create_access_accept(request=request, session=session)
         reply['State'] = session.session_id.encode()
         log.trace(f'msk: {session.msk}, secret: {reply.secret}, authenticator: {request.authenticator}')
         reply['MS-MPPE-Recv-Key'], reply['MS-MPPE-Send-Key'] = create_mppe_recv_key_send_key(session.msk, reply.secret, request.authenticator)

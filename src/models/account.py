@@ -22,6 +22,7 @@ class Account(Base):
     password = Column(String(255))
     radius_password = Column(String(255))
     role = Column(String(32))
+    speed = Column(Integer)
     expired_at = Column(DateTime)
 
     def __repr__(self):
